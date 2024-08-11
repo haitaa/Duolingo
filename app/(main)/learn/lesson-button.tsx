@@ -35,11 +35,11 @@ export const LessonButton = ({
     if (cycleIndex <= 2) {
         indentationLevel = cycleIndex;
     } else if (cycleIndex <= 4) {
-        indentationLevel = cycleIndex - 4;
+        indentationLevel = 4 - cycleIndex;
     } else if (cycleIndex <= 6) {
-        indentationLevel = cycleIndex - 4;
+        indentationLevel = 4 - cycleIndex;
     } else {
-        indentationLevel = cycleIndex - 8;
+        indentationLevel = 8 - cycleIndex;
     }
 
     const rightPosition = indentationLevel * 40;

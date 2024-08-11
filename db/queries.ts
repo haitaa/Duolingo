@@ -90,3 +90,146 @@ export const getCourseById = cache(async (courseId: number) => {
 
     return data;
 })
+
+export const getCourseProgress = cache(async () => {
+    const { userId } = await auth();
+    const userProgress = await getUserProgress();
+
+    if(!userId || !userProgress?.activeCourseId) {
+        return null;
+    }
+
+    // Aktif kursun ID'sine sahip üniteleri, bu ünitelerdeki dersleri ve derslere bağlı zorlukları al
+    const unitsInActiveCourse = await db.query.units.findMany({
+        // Üniteleri sıralamak için 'orderBy' kullanılır (sıralama: artan)
+        orderBy: (units, { asc }) => [asc(units.order)],
+        
+        // Aktif kurs kimliğine sahip üniteleri seç
+        where: eq(units.courseId, userProgress.activeCourseId),
+        
+        // İlgili ünitelerin derslerini ve derslere bağlı zorlukları getir
+        with: {
+            lessons: {
+                // Dersleri sıralamak için 'orderBy' kullanılır (sıralama: artan)
+                orderBy: (lessons, { asc }) => [asc(lessons.order)],
+                
+                // Her dersin ait olduğu üniteyi ve derslere bağlı zorlukları getir
+                with: {
+                    unit: true,
+                    challenges: {
+                        with: {
+                            challengeProgress: {
+                                // Kullanıcıya ait zorluk ilerlemesini al
+                                where: eq(challengeProgress.userId, userId),
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    });
+
+    // Aktif kursta bulunan derslerden, tamamlanmamış ilk dersi bul
+    const firstUncompletedLesson = unitsInActiveCourse
+        .flatMap((unit) => unit.lessons) // Üniteler içindeki dersleri düz bir listeye çevirir
+        .find((lesson) => {
+            // Bir dersin zorlukları arasında, tamamlanmamış olan birini bulur
+            return lesson.challenges.some((challenge) => {
+                return !challenge.challengeProgress 
+                || challenge.challengeProgress.length === 0
+                || challenge.challengeProgress.some((progress) => progress.completed === false)
+            });
+        });
+
+    // Bulunan ilk tamamlanmamış dersi ve dersin kimliğini döndür
+    return {
+        activeLesson: firstUncompletedLesson,
+        activeLessonId: firstUncompletedLesson?.id,
+    };
+})
+
+
+// Fonksiyon: Belirli bir dersi veya aktif dersi almak için kullanılan asenkron bir fonksiyon.
+// Bu fonksiyon, veritabanından dersi ve bu derse bağlı zorlukları getirir.
+export const getLesson = cache(async (id?: number) => {
+    // Kullanıcı kimliğini al (kimlik doğrulama işlemi)
+    const { userId } = await auth();
+
+    // Eğer kullanıcı kimliği mevcut değilse, null döndür
+    if (!userId) {
+        return null;
+    }
+
+    // Kullanıcının kurs ilerlemesini al
+    const courseProgress = await getCourseProgress();
+
+    // Belirtilmiş bir ders ID'si varsa onu kullan, aksi takdirde aktif dersi kullan
+    const lessonId = id || courseProgress?.activeLessonId;
+
+    // Eğer ders ID'si yoksa, null döndür
+    if (!lessonId) {
+        return null;
+    }
+
+    // Belirtilen ders ID'sine sahip ilk dersi ve bu derse bağlı zorlukları al
+    const data = await db.query.lessons.findFirst({
+        // Ders ID'sine göre filtrele
+        where: eq(lessons.id, lessonId),
+        
+        // Zorluklar ile birlikte getir (sıralama ve detayları ile)
+        with: {
+            challenges: {
+                // Zorlukları sıralamak için 'orderBy' kullanılır (sıralama: artan)
+                orderBy: (challenges, { asc }) => [asc(challenges.order)],
+                
+                // Her zorluğun seçeneklerini ve zorluk ilerlemesini getir
+                with: {
+                    challengeOptions: true,
+                    challengeProgress: {
+                        // Kullanıcıya ait zorluk ilerlemesini al
+                        where: eq(challengeProgress.userId, userId),
+                    },
+                },
+            },
+        },
+    });
+
+    // Eğer veri veya zorluklar mevcut değilse, null döndür
+    if (!data || !data.challenges) {
+        return null;
+    }
+
+    // Zorlukları normalleştir ve tamamlanmış olup olmadığını belirle
+    const normalizedChallenges = data.challenges.map((challenge) => {
+        // Zorluk tamamlanmış mı kontrol et
+        const completed = challenge.challengeProgress 
+            && challenge.challengeProgress.length > 0
+            && challenge.challengeProgress.every((progress) => progress.completed);
+
+        // Zorluğu tamamlanmış bilgisi ile birlikte döndür
+        return { ...challenge, completed: completed };
+    });
+
+    // Veriyi ve normalleştirilmiş zorlukları döndür
+    return { ...data, challenges: normalizedChallenges };
+});
+
+
+export const getLessonPercentage = cache(async () => {
+    const courseProgress = await getCourseProgress();
+
+    if(!courseProgress?.activeLessonId) {
+        return 0;
+    }
+
+    const lesson = await getLesson(courseProgress.activeLessonId);
+
+    if(!lesson) {
+        return 0;
+    }
+
+    const completedChallenges = lesson.challenges.filter((challenge) => challenge.completed);
+    const percentage = Math.round((completedChallenges.length / lesson.challenges.length) * 100)
+
+    return percentage;
+})
