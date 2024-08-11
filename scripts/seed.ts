@@ -19,7 +19,7 @@ const main = async () => {
         await db.delete(schema.units),
         await db.delete(schema.challengeOptions),
         await db.delete(schema.challenges),
-        await db.delete(schema.challengesProgress)
+        await db.delete(schema.challengeProgress)
 
         await db.insert(schema.courses).values([
             {
@@ -46,13 +46,13 @@ const main = async () => {
 
         await db.insert(schema.units).values([
             {
-                id: 1,
-                course_id: 1,
-                title: "Unit 1",
-                description: "Learn the basics of Spanish",
-                order: 1,
+              id: 1,
+              courseId: 1, // Spanish
+              title: "Unit 1",
+              description: "Learn the basics of Spanish",
+              order: 1,
             }
-        ])
+          ]);
 
         await db.insert(schema.lessons).values([
             {
@@ -66,7 +66,7 @@ const main = async () => {
                 unitId: 1,
                 order: 2,
                 title: "Verbs",
-            }
+            },
         ])
 
         await db.insert(schema.challenges).values([

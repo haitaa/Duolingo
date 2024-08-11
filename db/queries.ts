@@ -2,7 +2,7 @@ import { cache } from "react"
 import db from "./drizzle"
 import { auth } from "@clerk/nextjs/server"
 import { eq } from "drizzle-orm";
-import { courses, units, userProgress, challenges, challengesProgress, lessons } from "@/db/schema";
+import { courses, units, userProgress, challenges, lessons, challengeProgress } from "@/db/schema";
 
 export const getUserProgress = cache(async () => {
     const { userId } = await auth();
@@ -22,20 +22,24 @@ export const getUserProgress = cache(async () => {
 })
 
 export const getUnits = cache(async () => {
+    const { userId } = await auth();
     const userProgress = await getUserProgress();
 
-    if (!userProgress?.activeCoursesId) {
+    if (!userId || !userProgress?.activeCourseId) {
         return [];
     }
 
+    // TODO: Confirm whether order is needed
     const data = await db.query.units.findMany({
-        where: eq(units.course_id, userProgress.activeCoursesId),
+        where: eq(units.courseId, userProgress.activeCourseId),
         with: {
             lessons: {
                 with: {
                     challenges: {
                         with: {
-                            challengesProgress: true,
+                            challengeProgress: {
+                                where: eq(challengeProgress.userId, userId)
+                            },
                         }
                     }
                 },
@@ -55,9 +59,9 @@ export const getUnits = cache(async () => {
                 // - challenge.challengesProgress mevcut mu?
                 // - challenge.challengesProgress dizisinde en az bir ilerleme kaydı var mı?
                 // - challenge.challengesProgress'teki her ilerleme kaydı completed mı (tamamlanmış mı)?
-                return challenge.challengesProgress 
-                    && challenge.challengesProgress.length > 0 
-                    && challenge.challengesProgress.every((progress) => progress.completed);
+                return challenge.challengeProgress 
+                    && challenge.challengeProgress.length > 0 
+                    && challenge.challengeProgress.every((progress) => progress.completed);
             })
     
             // Dersin mevcut özelliklerini kopyalar ve completed özelliğini ekleyerek geri döner.

@@ -10,7 +10,7 @@ import { upsertUserProgress } from "@/actions/user-progress";
 
 type Props = {
     courses: (typeof courses.$inferSelect)[];
-    activeCourseId?: typeof userProgress.$inferSelect.activeCoursesId;
+    activeCourseId?: typeof userProgress.$inferSelect.activeCourseId;
 };
 
 const List = ({ courses, activeCourseId }: Props) => {
