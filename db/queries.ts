@@ -51,6 +51,10 @@ export const getUnits = cache(async () => {
     
         // Her bir dersin tamamlanma durumunu belirlemek için lessons üzerinde map işlemi yapılıyor.
         const lessonsWithCompletedStatus = unit.lessons.map((lesson) => {
+
+            if (lesson.challenges.length === 0) {
+                return { ...lesson, completed: false}
+            }
     
             // Tüm zorlukların tamamlanıp tamamlanmadığını kontrol etmek için challenges üzerinde every işlemi yapılıyor.
             const allCompletedChallenges = lesson.challenges.every((challenge) => {
