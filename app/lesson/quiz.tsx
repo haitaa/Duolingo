@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import Confetti from "react-confetti";
 
-import { challengeOptions, challenges } from "@/db/schema";
+import { challengeOptions, challenges, userSubsciption } from "@/db/schema";
 import Header from "./header";
 import { QuestionBubble } from "./question-bubble";
 import { Challenge } from "./challenge";
@@ -26,7 +26,11 @@ type Props = {
         completed: boolean;
         challengeOptions: (typeof challengeOptions.$inferSelect)[];
     })[];
-    userSubscription: any; // TODO: Replace with subscription DB
+    userSubscription:
+        | (typeof userSubsciption.$inferSelect & {
+              isActive: boolean;
+          })
+        | null; // TODO: Replace with subscription DB
 };
 
 const Quiz = ({
