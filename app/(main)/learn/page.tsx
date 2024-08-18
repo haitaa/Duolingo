@@ -12,7 +12,8 @@ import {
     getUserSubscription,
 } from "@/db/queries";
 import Unit from "./unit";
-import { lessons } from "@/db/schema";
+import { Promo } from "@/components/promo";
+import { Quests } from "@/components/quests";
 
 const LearnPage = async () => {
     const userProgressData = getUserProgress();
@@ -43,6 +44,8 @@ const LearnPage = async () => {
         redirect("/courses");
     }
 
+    const isPro = !!userSubscription?.isActive;
+
     return (
         <div className="flex flex-row-reverse gap-[48px] px-6">
             <StickyWrapper>
@@ -50,8 +53,10 @@ const LearnPage = async () => {
                     activeCourse={userProgress.activeCourse}
                     hearts={userProgress.hearts}
                     points={userProgress.points}
-                    hasActiveSubscription={!!userSubscription?.isActive}
+                    hasActiveSubscription={isPro}
                 />
+                {!isPro && <Promo />}
+                <Quests points={userProgress.points} />
             </StickyWrapper>
             <FeedWrapper>
                 <Header title={userProgress.activeCourse.title} />
